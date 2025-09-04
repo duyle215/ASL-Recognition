@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hand Sign Recognition</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+  </head>
+  <body class="bg-light text-center p-4">
+    <h2 class="mb-4">🖐️ Hand Sign Recognition WebApp</h2>
+    <video
+      id="video"
+      autoplay
+      playsinline
+      class="border mb-3"
+      width="400"
+    ></video>
+    <br />
+    <button id="capture-btn" class="btn btn-primary mb-2">📷 Capture</button>
+    <div id="status" class="text-muted mb-4"></div>
+
+    <div id="results" class="container d-none mt-4">
+      <div class="row justify-content-center align-items-start">
+        <!-- Original -->
+        <div class="col-md-4 text-center">
+          <h5>Original Image</h5>
+          <img id="original" class="img-fluid border rounded mb-2" />
+        </div>
+
+        <!-- Segment & Mask (stacked) -->
+        <div class="col-md-4 text-center">
+          <h5>Detected Hand</h5>
+          <img id="hand" class="img-fluid border rounded mb-2" />
+          <h6>Segmentation Mask</h6>
+          <img id="mask" class="img-fluid border rounded" />
+        </div>
+
+        <!-- Prediction -->
+        <div class="col-md-4 text-center">
+          <h5>Prediction</h5>
+          <div class="display-4" id="prediction"></div>
+          <small class="text-muted" id="confidence"></small>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const video = document.getElementById("video");
+      const captureBtn = document.getElementById("capture-btn");
+      const statusText = document.getElementById("status");
+
+      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        video.srcObject = stream;
+      });
+
+      captureBtn.addEventListener("click", () => {
+        const side = Math.min(video.videoWidth, video.videoHeight);
+        const canvas = document.createElement("canvas");
+        canvas.width = side;
+        canvas.height = side;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(
+          video,
+          (video.videoWidth - side) / 2,
+          (video.videoHeight - side) / 2,
+          side,
+          side,
+          0,
+          0,
+          side,
+          side
+        );
+
+        canvas.toBlob((blob) => {
+          const formData = new FormData();
+          formData.append("image", blob, "capture.jpg");
+          statusText.innerText = "📸 Đã chụp ảnh, đang xử lý...";
+          captureBtn.disabled = true;
+
+          fetch("/predict", { method: "POST", body: formData })
+            .then((res) => res.json())
+            .then((data) => {
+              document.getElementById("original").src =
+                "data:image/jpeg;base64," + data.original_img;
+              document.getElementById("hand").src =
+                "data:image/jpeg;base64," + data.hand_img;
+              document.getElementById("mask").src =
+                "data:image/jpeg;base64," + data.mask_img;
+              document.getElementById("prediction").innerText = data.prediction;
+              document.getElementById(
+                "confidence"
+              ).innerText = `Confidence: ${data.confidence}%`;
+              document.getElementById("results").classList.remove("d-none");
+              statusText.innerText = "✅ Xử lý xong!";
+              captureBtn.disabled = false;
+            });
+        }, "image/jpeg");
+      });
+    </script>
+  </body>
+</html>

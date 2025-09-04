@@ -1,0 +1,11 @@
+flask
+torch
+torchvision
+opencv-python
+Pillow
+matplotlib
+seaborn
+scikit-learn
+torchsummary
+tqdm
+torch_xla
